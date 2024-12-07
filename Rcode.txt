@@ -1,0 +1,62 @@
+# Load required libraries
+library(tidyverse)
+library(cluster)
+library(arules)
+library(arulesViz) 
+
+# Loading datasets
+customer = read.csv("customer_data.csv")
+purchases = read.csv("customer_purchase_history_final.csv")
+purchases = read.transactions("customer_purchase_history_final.csv", sep = ',', rm.duplicates = TRUE)
+
+# Data preprocessing and exploration
+summary(purchases)
+itemFrequencyPlot(purchases, topN = 10)
+summary(customer)
+str(customer)
+head(customer)
+
+# Select relevant features for clustering
+features = customer[, c("age", "salary", "spending_score")]
+
+# Visualizing distribution of selected features
+summary(features) 
+hist(features[, 1]) 
+hist(features[, 2]) 
+hist(features[, 3]) 
+
+# Scaling the data
+features_scale = scale(features)
+
+#selecting K value
+set.seed(6)
+wcss = vector()
+for (i in 1:10) wcss[i] = sum(kmeans(features_scale, i)$withinss)
+plot(x = 1:10,
+     y = wcss,
+     type = 'b',
+     main = paste('The Elbow Method'),
+     xlab = 'Number of clusters',
+     ylab = 'WCSS')
+
+# Perform k-means clustering
+KNN_model <- kmeans(features_scale, centers = 2, iter.max = 300,
+                   nstart = 10)
+
+# Visualize clusters
+clusplot(x = features_scale,
+         clus = KNN_model$cluster,
+         lines = 0,
+         shade = TRUE,
+         color = TRUE,
+         plotchar = FALSE,
+         span = TRUE,
+         main = paste('Clusters of customers'),
+         xlab = 'Annual Income',
+         ylab = 'Spending Score')
+
+# Training Eclat on the dataset
+rules = eclat(data = purchases, parameter = list(support = 0.004, minlen = 3))
+
+# Visualising the results
+inspect(sort(rules, by = 'support')[1:10])
